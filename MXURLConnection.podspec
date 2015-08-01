@@ -8,5 +8,5 @@ Pod::Spec.new do |s|
   s.author       = "Eric Lung"
   s.source       = { :git => "https://github.com/longminxiang/MXURLConnection.git", :tag => "v" + s.version.to_s }
   s.requires_arc = true
-  s.source_files = "*.{h,m}"
+  s.source_files = "MXURLConnection/*.{h,m}"
 end
