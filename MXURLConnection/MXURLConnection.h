@@ -11,6 +11,7 @@
 @interface MXURLConnection : NSObject
 
 typedef void (^MXConnectionBlock)(MXURLConnection *connection, NSData *responseData, NSError *error);
+typedef void (^MXConnectionDownloadingBlock)(MXURLConnection *connection, long long currentBytes, long long totalBytes, NSError *error);
 
 @property (nonatomic, strong) NSMutableURLRequest *request;
 
@@ -19,6 +20,8 @@ typedef void (^MXConnectionBlock)(MXURLConnection *connection, NSData *responseD
 - (instancetype)initWithRequest:(NSMutableURLRequest *)request;
 
 - (void)setResponseBlock:(MXConnectionBlock)responseBlock;
+
+- (void)setDownloadingBlock:(MXConnectionDownloadingBlock)downloadingBlock;
 
 - (void)start;
 

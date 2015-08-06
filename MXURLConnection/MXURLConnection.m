@@ -12,8 +12,11 @@
 @interface MXURLConnection ()<NSURLConnectionDataDelegate>
 
 @property (nonatomic, strong) NSMutableData *resData;
+@property (nonatomic, strong) NSURLResponse *response;
 
 @property (nonatomic, copy) MXConnectionBlock responseBlock;
+
+@property (nonatomic, copy) MXConnectionDownloadingBlock downloadingBlock;
 
 @property (nonatomic, assign) BOOL didStart;
 
@@ -56,6 +59,7 @@
     [self.queue removeConnection:self];
     NSData *data = !error ? self.resData : nil;
     if(self.responseBlock) self.responseBlock(self, data, error);
+    if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, self.response.expectedContentLength, error);
     if (self.queue) [self.queue startQueue];
 }
 
@@ -64,10 +68,16 @@
     [self performResponseBlockWithError:nil];
 }
 
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+{
+    self.response = response;
+}
+
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
 {
     if (!self.resData) self.resData = [NSMutableData new];
     [self.resData appendData:data];
+    if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, self.response.expectedContentLength, nil);
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
