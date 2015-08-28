@@ -7,11 +7,8 @@
 //
 
 #import "AppDelegate.h"
-#import "MXURLConnection.h"
 
 @interface AppDelegate ()
-
-@property (nonatomic, strong) MXURLConnection *cnnt;
 
 @end
 
@@ -20,15 +17,6 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
-    NSURL *url = [NSURL URLWithString:@"http://www.rzds.net/data/excel/20140807/1407402423600552.pdf"];
-//    NSURL *url = [NSURL URLWithString:@"http://www.hao123.com/"];
-    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:url];
-    MXURLConnection *cnnt = [[MXURLConnection alloc] initWithRequest:request];
-    [cnnt start];
-    self.cnnt = cnnt;
-    [cnnt setDownloadingBlock:^(MXURLConnection *connection, long long currentBytes, long long totalBytes, NSError *error) {
-        NSLog(@"%lld, %lld, %f", currentBytes, totalBytes, (float)currentBytes/(float)totalBytes);
-    }];
     return YES;
 }
 
