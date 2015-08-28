@@ -13,15 +13,17 @@
 
 @property (nonatomic, assign) NSInteger maxCount;
 
-+ (instancetype)sharedQueue;
++ (instancetype)globalQueue;
 
 - (void)addConnection:(MXURLConnection *)connection index:(NSInteger)index;
 
 - (void)removeConnection:(MXURLConnection *)connection;
 
+- (void)removeAllConnection;
+
 - (void)startQueue;
 
-- (NSInteger)queueCount;
+- (NSInteger)waitingConnectionsCount;
 
 - (BOOL)hasConnection;
 

@@ -8,16 +8,18 @@
 #import "MXURLConnectionQueue.h"
 #import "MXURLConnection.h"
 
+#define DEFAULT_QUEUE_COUNT     8
+
 @interface MXURLConnectionQueue ()
 
-@property (nonatomic, readonly) NSMutableArray *allConnection;
-@property (nonatomic, readonly) NSMutableArray *cntConnections;
+@property (nonatomic, readonly) NSMutableArray *waitingConnections;
+@property (nonatomic, readonly) NSMutableArray *currentConnections;
 
 @end
 
 @implementation MXURLConnectionQueue
 
-+ (instancetype)sharedQueue
++ (instancetype)globalQueue
 {
     static id obj;
     static dispatch_once_t onceToken;
@@ -30,41 +32,40 @@
 - (id)init
 {
     if (self = [super init]) {
-        _allConnection = [NSMutableArray new];
-        _cntConnections = [NSMutableArray new];
-        self.maxCount = 5;
+        _waitingConnections = [NSMutableArray new];
+        _currentConnections = [NSMutableArray new];
+        self.maxCount = DEFAULT_QUEUE_COUNT;
     }
     return self;
 }
 
 - (void)setMaxCount:(NSInteger)maxCount
 {
-    if (maxCount <= 0) maxCount = 5;
+    if (maxCount <= 0) maxCount = DEFAULT_QUEUE_COUNT;
     _maxCount = maxCount;
 }
 
 - (void)addConnection:(MXURLConnection *)connection index:(NSInteger)index
 {
     if ([self containsConnection:connection]) return;
-    NSInteger count = self.allConnection.count;
+    NSInteger count = self.waitingConnections.count;
     index = MAX(0, index);
     if (index >= count - 1) {
-        index = count - 1;
-        [self.allConnection addObject:connection];
+        [self.waitingConnections addObject:connection];
     }
     else {
-        [self.allConnection insertObject:connection atIndex:index];
+        [self.waitingConnections insertObject:connection atIndex:index];
     }
 }
 
 - (BOOL)containsConnection:(MXURLConnection *)connection
 {
-    for (MXURLConnection *cnnt in self.allConnection) {
+    for (MXURLConnection *cnnt in self.waitingConnections) {
         if ([cnnt.key isEqualToString:connection.key]) {
             return YES;
         }
     }
-    for (MXURLConnection *cnnt in self.cntConnections) {
+    for (MXURLConnection *cnnt in self.currentConnections) {
         if ([cnnt.key isEqualToString:connection.key]) {
             return YES;
         }
@@ -74,32 +75,42 @@
 
 - (void)removeConnection:(MXURLConnection *)connection
 {
-    [self.cntConnections removeObject:connection];
+    [connection cancel];
+    [self.waitingConnections removeObject:connection];
+    [self.currentConnections removeObject:connection];
+}
+
+- (void)removeAllConnection
+{
+    [self.waitingConnections makeObjectsPerformSelector:@selector(cancel)];
+    [self.waitingConnections removeAllObjects];
+    [self.currentConnections makeObjectsPerformSelector:@selector(cancel)];
+    [self.currentConnections removeAllObjects];
 }
 
 - (void)startQueue
 {
-    NSInteger cntCount = self.cntConnections.count;
-    NSInteger allCount = self.allConnection.count;
+    NSInteger currentCount = self.currentConnections.count;
+    NSInteger waitingCount = self.waitingConnections.count;
     
-    while (allCount && cntCount < self.maxCount) {
-        MXURLConnection *cnnt = self.allConnection[0];
-        [self.cntConnections addObject:cnnt];
-        [self.allConnection removeObject:cnnt];
+    while (waitingCount && currentCount < self.maxCount) {
+        MXURLConnection *cnnt = self.waitingConnections[0];
+        [self.currentConnections addObject:cnnt];
+        [self.waitingConnections removeObject:cnnt];
         [cnnt start];
-        cntCount = self.cntConnections.count;
-        allCount = self.allConnection.count;
+        currentCount = self.currentConnections.count;
+        waitingCount = self.waitingConnections.count;
     }
 }
 
-- (NSInteger)queueCount
+- (NSInteger)waitingConnectionsCount
 {
-    return self.allConnection.count;
+    return self.waitingConnections.count;
 }
 
 - (BOOL)hasConnection
 {
-    return self.allConnection.count || self.cntConnections.count;
+    return self.waitingConnections.count || self.currentConnections.count;
 }
 
 @end

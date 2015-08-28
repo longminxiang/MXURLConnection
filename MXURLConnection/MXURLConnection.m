@@ -7,10 +7,12 @@
 
 #import "MXURLConnection.h"
 #import <SystemConfiguration/SystemConfiguration.h>
+#import <objc/runtime.h>
 #include "netdb.h"
 
 @interface MXURLConnection ()<NSURLConnectionDataDelegate>
 
+@property (nonatomic, strong) NSURLConnection *connection;
 @property (nonatomic, strong) NSMutableData *resData;
 @property (nonatomic, strong) NSURLResponse *response;
 
@@ -35,7 +37,6 @@
 - (void)setRequest:(NSMutableURLRequest *)request
 {
     _request = request;
-    
     self.key = request.URL.absoluteString;
 }
 
@@ -47,10 +48,16 @@
         NSError *error = [NSError errorWithDomain:@"无网络连接" code:-1999 userInfo:nil];
         [self performResponseBlockWithError:error];
     }
-    NSURLConnection *connection = [NSURLConnection connectionWithRequest:self.request delegate:self];
+    NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest:self.request delegate:self];
+    self.connection = connection;
     dispatch_async(dispatch_get_main_queue(), ^{
         [connection start];
     });
+}
+
+- (void)cancel
+{
+    [self.connection cancel];
 }
 
 - (void)performResponseBlockWithError:(NSError *)error
@@ -62,6 +69,9 @@
     if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, self.response.expectedContentLength, error);
     if (self.queue) [self.queue startQueue];
 }
+
+#pragma mark
+#pragma mark === delegate ===
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection
 {
@@ -77,7 +87,10 @@
 {
     if (!self.resData) self.resData = [NSMutableData new];
     [self.resData appendData:data];
-    if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, self.response.expectedContentLength, nil);
+    long long totalLength = self.response.expectedContentLength;
+    if (totalLength > 0) {
+        if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, totalLength, nil);
+    }
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
@@ -92,16 +105,32 @@
 }
 
 #pragma mark
-#pragma mark === 队列 ===
+#pragma mark === Queue ===
 
-- (void)startInSharedQueue
+- (void)dealloc
 {
-    [self startInQueue:[MXURLConnectionQueue sharedQueue]];
+//    NSLog(@"%@ dealloc",[[self class] description]);
 }
 
-- (void)startInSharedQueueWithIndex:(NSInteger)index
+@end
+
+@implementation MXURLConnection (Queue)
+
+const static char* queueKey = "queue";
+
+- (MXURLConnectionQueue *)queue
 {
-    [self startInQueue:[MXURLConnectionQueue sharedQueue] index:index];
+    return objc_getAssociatedObject(self, queueKey);
+}
+
+- (void)startInGlobalQueue
+{
+    [self startInQueue:[MXURLConnectionQueue globalQueue]];
+}
+
+- (void)startInglobalQueueWithIndex:(NSInteger)index
+{
+    [self startInQueue:[MXURLConnectionQueue globalQueue] index:index];
 }
 
 - (void)startInQueue:(MXURLConnectionQueue *)queue
@@ -111,14 +140,9 @@
 
 - (void)startInQueue:(MXURLConnectionQueue *)queue index:(NSInteger)index
 {
-    _queue = queue;
+    objc_setAssociatedObject(self, queueKey, queue, OBJC_ASSOCIATION_ASSIGN);
     [queue addConnection:self index:index];
     [queue startQueue];
-}
-
-- (void)dealloc
-{
-//    NSLog(@"%@ dealloc",[[self class] description]);
 }
 
 @end
@@ -127,28 +151,10 @@
 
 + (BOOL)didConnectedToNetwork
 {
-    // 创建零地址，0.0.0.0的地址表示查询本机的网络连接状态
     struct sockaddr_in zeroAddress;
     bzero(&zeroAddress, sizeof(zeroAddress));
     zeroAddress.sin_len = sizeof(zeroAddress);
     zeroAddress.sin_family = AF_INET;
-    
-    /**
-     *  SCNetworkReachabilityRef: 用来保存创建测试连接返回的引用
-     *
-     *  SCNetworkReachabilityCreateWithAddress: 根据传入的地址测试连接.
-     *  第一个参数可以为NULL或kCFAllocatorDefault
-     *  第二个参数为需要测试连接的IP地址,当为0.0.0.0时则可以查询本机的网络连接状态.
-     *  同时返回一个引用必须在用完后释放.
-     *  PS: SCNetworkReachabilityCreateWithName: 这个是根据传入的网址测试连接,
-     *  第二个参数比如为"www.2cto.com",其他和上一个一样.
-     *
-     *  SCNetworkReachabilityGetFlags: 这个函数用来获得测试连接的状态,
-     *  第一个参数为之前建立的测试连接的引用,
-     *  第二个参数用来保存获得的状态,
-     *  如果能获得状态则返回TRUE，否则返回FALSE
-     *
-     */
     SCNetworkReachabilityRef defaultRouteReachability = SCNetworkReachabilityCreateWithAddress(NULL, (struct sockaddr *)&zeroAddress);
     SCNetworkReachabilityFlags flags;
     
@@ -160,14 +166,6 @@
         printf("Error. Could not recover network reachability flagsn");
         return NO;
     }
-    
-    /**
-     *  kSCNetworkReachabilityFlagsReachable: 能够连接网络
-     *  kSCNetworkReachabilityFlagsConnectionRequired: 能够连接网络,但是首先得建立连接过程
-     *  kSCNetworkReachabilityFlagsIsWWAN: 判断是否通过蜂窝网覆盖的连接,
-     *  比如EDGE,GPRS或者目前的3G.主要是区别通过WiFi的连接.
-     *
-     */
     BOOL isReachable = ((flags & kSCNetworkFlagsReachable) != 0);
     BOOL needsConnection = ((flags & kSCNetworkFlagsConnectionRequired) != 0);
     return (isReachable && !needsConnection) ? YES : NO;

@@ -25,17 +25,19 @@ typedef void (^MXConnectionDownloadingBlock)(MXURLConnection *connection, long l
 
 - (void)start;
 
-/**
- *  队列
- */
+- (void)cancel;
+
+@end
+
+@interface MXURLConnection (Queue)
 
 @property (nonatomic, weak, readonly) MXURLConnectionQueue *queue;
 
 - (void)startInQueue:(MXURLConnectionQueue *)queue;
 - (void)startInQueue:(MXURLConnectionQueue *)queue index:(NSInteger)index;
 
-- (void)startInSharedQueue;
-- (void)startInSharedQueueWithIndex:(NSInteger)index;
+- (void)startInGlobalQueue;
+- (void)startInglobalQueueWithIndex:(NSInteger)index;
 
 @end
 
