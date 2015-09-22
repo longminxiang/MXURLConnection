@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "MXURLConnection"
-  s.version      = "0.1.3"
+  s.version      = "0.1.0"
   s.summary      = "easy http request"
   s.description  = "easy http request with block"
   s.homepage     = "https://github.com/longminxiang/MXURLConnection"
