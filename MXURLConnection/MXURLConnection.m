@@ -45,7 +45,9 @@
     if (self.didStart) return;
     self.didStart = YES;
     if (![MXURLConnection didConnectedToNetwork]) {
-        NSError *error = [NSError errorWithDomain:@"无网络连接" code:-1999 userInfo:nil];
+        NSString *msg = @"无网络连接";
+        NSDictionary *dic = @{NSLocalizedFailureReasonErrorKey: msg};
+        NSError *error = [NSError errorWithDomain:msg code:-1999 userInfo:dic];
         [self performResponseBlockWithError:error];
     }
     NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest:self.request delegate:self];
@@ -96,16 +98,17 @@
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
 {
     if (error.code == -1009) {
-        error = [NSError errorWithDomain:@"无网络连接" code:error.code userInfo:error.userInfo];
+        NSString *msg = @"无网络连接";
+        NSDictionary *dic = @{NSLocalizedFailureReasonErrorKey: msg};
+        error = [NSError errorWithDomain:msg code:error.code userInfo:dic];
     }
-    else if (error.code == -1005) {
-        error = [NSError errorWithDomain:@"网络异常" code:error.code userInfo:error.userInfo];
+    else {
+        NSString *msg = @"网络异常";
+        NSDictionary *dic = @{NSLocalizedFailureReasonErrorKey: msg};
+        error = [NSError errorWithDomain:msg code:error.code userInfo:dic];
     }
     [self performResponseBlockWithError:error];
 }
-
-#pragma mark
-#pragma mark === Queue ===
 
 - (void)dealloc
 {
@@ -113,6 +116,9 @@
 }
 
 @end
+
+#pragma mark
+#pragma mark === Queue ===
 
 @implementation MXURLConnection (Queue)
 
@@ -146,6 +152,9 @@ const static char* queueKey = "queue";
 }
 
 @end
+
+#pragma mark
+#pragma mark === static method ===
 
 @implementation MXURLConnection (Static)
 
