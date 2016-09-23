@@ -2,7 +2,7 @@
 //  MXURLConnectionQueue.m
 //
 //  Created by eric on 15/4/13.
-//  Copyright (c) 2015年 eric. All rights reserved.
+//  Copyright (c) 2015年 Eric Lung. All rights reserved.
 //
 
 #import "MXURLConnectionQueue.h"
@@ -60,17 +60,7 @@
 
 - (BOOL)containsConnection:(MXURLConnection *)connection
 {
-    for (MXURLConnection *cnnt in self.waitingConnections) {
-        if ([cnnt.key isEqualToString:connection.key]) {
-            return YES;
-        }
-    }
-    for (MXURLConnection *cnnt in self.currentConnections) {
-        if ([cnnt.key isEqualToString:connection.key]) {
-            return YES;
-        }
-    }
-    return NO;
+    return [self.waitingConnections containsObject:connection] || [self.currentConnections containsObject:connection];
 }
 
 - (void)removeConnection:(MXURLConnection *)connection

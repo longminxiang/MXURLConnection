@@ -2,8 +2,8 @@
 //  ViewController.m
 //  MXURLConnectionDemo
 //
-//  Created by longminxiang on 15/8/6.
-//  Copyright (c) 2015年 eric. All rights reserved.
+//  Created by eric on 15/8/6.
+//  Copyright (c) 2015年 Eric Lung. All rights reserved.
 //
 
 #import "ViewController.h"
@@ -32,14 +32,23 @@
 
 - (void)testDownload
 {
-    NSURL *url = [NSURL URLWithString:@"http://www.rzds.net/data/excel/20140807/1407402423600552.pdf"];
-//    NSURL *url = [NSURL URLWithString:@"http://www.hao123.com"];
+//    NSURL *url = [NSURL URLWithString:@"http://www.rzds.net/data/excel/20140807/1407402423600552.pdf"];
+    NSURL *url = [NSURL URLWithString:@"http://www.baidu.com"];
     NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:url];
     MXURLConnection *cnnt = [[MXURLConnection alloc] initWithRequest:request];
     [cnnt start];
     self.cnnt = cnnt;
     [cnnt setDownloadingBlock:^(MXURLConnection *connection, long long currentBytes, long long totalBytes, NSError *error) {
         NSLog(@"%lld, %lld, %f", currentBytes, totalBytes, (float)currentBytes/(float)totalBytes);
+    }];
+    [cnnt setResponseBlock:^(MXURLConnection *connection, NSData *responseData, NSError *error) {
+        if (!error) {
+            NSString *string = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+            NSLog(@"%@", string);
+        }
+        else {
+            NSLog(@"%@", error.localizedFailureReason);
+        }
     }];
 }
 

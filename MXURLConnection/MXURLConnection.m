@@ -1,8 +1,8 @@
 //
 //  MXURLConnection.m
 //
-//  Created by longminxiang on 14-9-16.
-//  Copyright (c) 2014年 eric. All rights reserved.
+//  Created by eric on 14-9-16.
+//  Copyright (c) 2014年 Eric Lung. All rights reserved.
 //
 
 #import "MXURLConnection.h"
@@ -13,7 +13,7 @@
 @interface MXURLConnection ()<NSURLConnectionDataDelegate>
 
 @property (nonatomic, strong) NSURLConnection *connection;
-@property (nonatomic, strong) NSMutableData *resData;
+@property (nonatomic, strong) NSMutableData *responseData;
 @property (nonatomic, strong) NSURLResponse *response;
 
 @property (nonatomic, copy) MXConnectionBlock responseBlock;
@@ -32,12 +32,6 @@
         self.request = request;
     }
     return self;
-}
-
-- (void)setRequest:(NSMutableURLRequest *)request
-{
-    _request = request;
-    self.key = request.URL.absoluteString;
 }
 
 - (void)start
@@ -66,9 +60,9 @@
 {
     self.didStart = NO;
     [self.queue removeConnection:self];
-    NSData *data = !error ? self.resData : nil;
+    NSData *data = !error ? self.responseData : nil;
     if(self.responseBlock) self.responseBlock(self, data, error);
-    if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, self.response.expectedContentLength, error);
+    if (self.downloadingBlock) self.downloadingBlock(self, self.responseData.length, self.response.expectedContentLength, error);
     if (self.queue) [self.queue startQueue];
 }
 
@@ -87,11 +81,11 @@
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
 {
-    if (!self.resData) self.resData = [NSMutableData new];
-    [self.resData appendData:data];
+    if (!self.responseData) self.responseData = [NSMutableData new];
+    [self.responseData appendData:data];
     long long totalLength = self.response.expectedContentLength;
     if (totalLength > 0) {
-        if (self.downloadingBlock) self.downloadingBlock(self, self.resData.length, totalLength, nil);
+        if (self.downloadingBlock) self.downloadingBlock(self, self.responseData.length, totalLength, nil);
     }
 }
 
@@ -109,12 +103,7 @@
     }
     [self performResponseBlockWithError:error];
 }
-
-- (void)dealloc
-{
-//    NSLog(@"%@ dealloc",[[self class] description]);
-}
-
+    
 @end
 
 #pragma mark
@@ -122,11 +111,9 @@
 
 @implementation MXURLConnection (Queue)
 
-const static char* queueKey = "queue";
-
 - (MXURLConnectionQueue *)queue
 {
-    return objc_getAssociatedObject(self, queueKey);
+    return objc_getAssociatedObject(self, _cmd);
 }
 
 - (void)startInGlobalQueue
@@ -146,7 +133,7 @@ const static char* queueKey = "queue";
 
 - (void)startInQueue:(MXURLConnectionQueue *)queue index:(NSInteger)index
 {
-    objc_setAssociatedObject(self, queueKey, queue, OBJC_ASSOCIATION_ASSIGN);
+    objc_setAssociatedObject(self, @selector(queue), queue, OBJC_ASSOCIATION_ASSIGN);
     [queue addConnection:self index:index];
     [queue startQueue];
 }
